@@ -1,0 +1,13 @@
+ARG BASE_IMAGE=registry.lazycat.cloud/community/gpt4free:20260926-c0402eb-base
+FROM ${BASE_IMAGE}
+
+USER root
+COPY docker/lazycat-entrypoint.sh /usr/local/bin/g4f-lazycat-entrypoint
+# Docker stdout/stderr descriptors are root-owned in the LazyCat runtime.
+# supervisord runs as seluser, so /dev/stdout dispatchers fail with EACCES.
+# Keep logs in the writable Selenium log directory instead.
+RUN sed -i 's#/dev/stdout#/var/log/supervisor/g4f-api.log#g' /etc/supervisor/conf.d/api.conf \
+ && sed -i 's#/dev/stdout#/var/log/supervisor/recorder.log#g' /etc/supervisor/conf.d/recorder.conf \
+ && sed -i 's#/dev/stdout#/var/log/supervisor/uploader.log#g' /etc/supervisor/conf.d/uploader.conf \
+ && chmod 0755 /usr/local/bin/g4f-lazycat-entrypoint
+ENTRYPOINT ["/usr/local/bin/g4f-lazycat-entrypoint"]

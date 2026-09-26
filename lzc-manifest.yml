@@ -1,0 +1,36 @@
+application:
+  subdomain: gpt4free
+  multi_instance: false
+  background_task: true
+  health_check:
+    test_url: http://gpt4free:8080/
+    start_period: 120s
+    timeout: 10s
+  # No public_path: LazyCat platform authentication covers the complete
+  # upstream UI, API, and browser desktop.
+  upstreams:
+    # Upstreams trim their location by default, so /browser/vnc.html and
+    # /browser/websockify reach noVNC as /vnc.html and /websockify.
+    - location: /browser/
+      backend: http://gpt4free:7900/
+      fix_websocket_header: true
+    - location: /
+      backend: http://gpt4free:8080/
+services:
+  gpt4free:
+    image: registry.lazycat.cloud/community/gpt4free:20260926-c0402eb
+    shm_size: 2gb
+    binds:
+      # HAR/cookie files used by upstream g4f providers.
+      - /lzcapp/var/har_and_cookies:/app/har_and_cookies
+      # Upstream media output is relative to /app.
+      - /lzcapp/var/media:/app/generated_media
+      # g4f config/cookies and Chrome profile state survive restarts.
+      - /lzcapp/var/g4f-config:/home/seluser/.g4f
+      - /lzcapp/var/browser-config:/home/seluser/.config
+    environment:
+      G4F_DIR: /app
+      G4F_USER: seluser
+      G4F_USER_ID: "1200"
+      SE_VNC_PASSWORD: '{{ stable_secret "gpt4free_vnc_password" }}'
+      G4F_LOGIN_URL: 'https://gpt4free.lazycat1012.heiyu.space/browser/?autoconnect=1&resize=scale&path=browser/websockify&password={{ stable_secret "gpt4free_vnc_password" }}'

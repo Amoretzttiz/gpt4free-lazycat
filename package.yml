@@ -1,0 +1,19 @@
+package: community.lazycat.app.gpt4free
+version: 1.0.1
+name: gpt4free
+description: Original xtekky/gpt4free web UI and browser-capable multi-provider gateway.
+author: xtekky
+license: GNU General Public License v3.0
+homepage: https://github.com/xtekky/gpt4free
+admin_only: true
+min_os_version: 1.5.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: gpt4free
+    description: 保留上游 xtekky/gpt4free 界面与多 Provider 逻辑的浏览器版网关。
+  en:
+    name: gpt4free
+    description: Original xtekky/gpt4free UI and multi-provider gateway with browser-capable runtime.
