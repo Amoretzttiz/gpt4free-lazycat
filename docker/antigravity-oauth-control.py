@@ -60,6 +60,11 @@ def write_credentials(tokens, auth_manager_type):
             descriptor = None
             json.dump(payload, handle, separators=(",", ":")); handle.flush(); os.fsync(handle.fileno())
         os.replace(temp_path, credential_path()); os.chmod(credential_path(), 0o600)
+        dir_fd = os.open(CREDENTIALS_DIR, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
     finally:
         if descriptor is not None: os.close(descriptor)
         try: temp_path.unlink()
