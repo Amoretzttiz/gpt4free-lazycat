@@ -15,9 +15,13 @@ runner host Docker daemon, adds only the LazyCat entrypoint wrapper, and
 publishes the immutable GHCR tag. It does not publish `latest`.
 
 The final image carries OCI source, license, and revision labels, plus the exact
-upstream source revision. The wrapper workflow uses only the repository-scoped
-`GITHUB_TOKEN`; the manifest VNC password is generated on the target by
-`stable_secret` and is not stored in this repository.
+upstream source revision. `LICENSE`, `NOTICE.md`, and an exact packaging source
+reference are installed under `/usr/share/doc/gpt4free`. Before building, the
+workflow performs an authenticated GHCR manifest lookup and proceeds only for an
+explicit `MANIFEST_UNKNOWN` response; an existing tag, authentication failure,
+or network/registry error fails closed. The wrapper workflow uses only the
+repository-scoped `GITHUB_TOKEN`; the manifest VNC password is generated on the
+target by `stable_secret` and is not stored in this repository.
 
 ## Runtime and auth
 
@@ -47,6 +51,12 @@ does not embed the multi-gigabyte Selenium/Chrome image. The target LazyCat
 runtime must therefore be able to pull
 `ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb`.
 
+GHCR packages are private by default on first publication. Before deploying this
+LPK, change the newly published package visibility to **public** in GitHub's
+package settings, then verify the fixed tag can be pulled anonymously (with no
+GHCR credentials present). Do not deploy based only on the authenticated Actions
+verification; deployment must wait for an anonymous pull to succeed.
+
 ```sh
 lzc-cli project lint .
 lzc-cli project release . --output ./dist/gpt4free-1.0.2.lpk
@@ -58,8 +68,8 @@ lzc-cli lpk embed ./dist/gpt4free-1.0.2.lpk
 
 ## License and source
 
-The runtime is built from [`xtekky/gpt4free`](https://github.com/xtekky/gpt4free)
+The runtime is built from the fixed [`xtekky/gpt4free` source tree](https://github.com/xtekky/gpt4free/tree/c0402eb5e3eb10529edff84f2ea7ded55643cacf)
 at `c0402eb5e3eb10529edff84f2ea7ded55643cacf` and is distributed under GNU GPL
-v3. See `LICENSE` and `NOTICE.md`. Corresponding source is available at the
-pinned upstream commit; the public wrapper and build recipe are in this
-repository.
+v3. See `LICENSE` and `NOTICE.md`. The public wrapper and build recipe are in
+this repository; each image records its exact packaging revision in OCI metadata
+and `/usr/share/doc/gpt4free/PACKAGING_SOURCE`.

@@ -13,7 +13,8 @@ permissions:
 # publishing the same image name.
 concurrency:
   group: gpt4free-ghcr-${{ github.repository }}
-  cancel-in-progress: true
+  # Never cancel a run that may be in the middle of pushing the fixed tag.
+  cancel-in-progress: false
 
 env:
   UPSTREAM_REPO: xtekky/gpt4free
@@ -46,6 +47,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Refuse to overwrite the immutable tag
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./.github/scripts/check-ghcr-tag.sh "${IMAGE}" "${TAG}"
+
       - name: Build upstream browser image
         uses: docker/build-push-action@v6
         with:
@@ -66,6 +73,8 @@ jobs:
           docker build \
             --file ./docker/Dockerfile-lazycat \
             --build-arg "BASE_IMAGE=gpt4free-base:${TAG}" \
+            --build-arg "PACKAGING_SOURCE_URL=https://github.com/${GITHUB_REPOSITORY}" \
+            --build-arg "PACKAGING_REVISION=${GITHUB_SHA}" \
             --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.licenses=GPL-3.0-only" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \

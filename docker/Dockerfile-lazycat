@@ -2,12 +2,19 @@ ARG BASE_IMAGE=gpt4free-base:20260926-c0402eb
 FROM ${BASE_IMAGE}
 
 USER root
+ARG PACKAGING_SOURCE_URL
+ARG PACKAGING_REVISION
 COPY docker/lazycat-entrypoint.sh /usr/local/bin/g4f-lazycat-entrypoint
+COPY LICENSE NOTICE.md /usr/share/doc/gpt4free/
 # Docker stdout/stderr descriptors are root-owned in the LazyCat runtime.
 # supervisord runs as seluser, so /dev/stdout dispatchers fail with EACCES.
 # Keep logs in the writable Selenium log directory instead.
 RUN sed -i 's#/dev/stdout#/var/log/supervisor/g4f-api.log#g' /etc/supervisor/conf.d/api.conf \
  && sed -i 's#/dev/stdout#/var/log/supervisor/recorder.log#g' /etc/supervisor/conf.d/recorder.conf \
  && sed -i 's#/dev/stdout#/var/log/supervisor/uploader.log#g' /etc/supervisor/conf.d/uploader.conf \
+ && test -n "${PACKAGING_SOURCE_URL}" \
+ && test -n "${PACKAGING_REVISION}" \
+ && printf '%s/tree/%s\n' "${PACKAGING_SOURCE_URL}" "${PACKAGING_REVISION}" > /usr/share/doc/gpt4free/PACKAGING_SOURCE \
+ && chmod 0644 /usr/share/doc/gpt4free/LICENSE /usr/share/doc/gpt4free/NOTICE.md /usr/share/doc/gpt4free/PACKAGING_SOURCE \
  && chmod 0755 /usr/local/bin/g4f-lazycat-entrypoint
 ENTRYPOINT ["/usr/local/bin/g4f-lazycat-entrypoint"]
