@@ -11,6 +11,8 @@ application:
   upstreams:
     # Upstreams trim their location by default, so /browser/vnc.html and
     # /browser/websockify reach noVNC as /vnc.html and /websockify.
+    - location: /antigravity-oauth/
+      backend: http://gpt4free:8766/
     - location: /browser/
       backend: http://gpt4free:7900/
       fix_websocket_header: true
@@ -18,7 +20,7 @@ application:
       backend: http://gpt4free:8080/
 services:
   gpt4free:
-    image: registry.lazycat.cloud/community/gpt4free:20260926-c0402eb
+    image: registry.lazycat.cloud/community/gpt4free:20260926-c0402eb-oauth1
     shm_size: 2gb
     binds:
       # HAR/cookie files used by upstream g4f providers.
@@ -32,5 +34,7 @@ services:
       G4F_DIR: /app
       G4F_USER: seluser
       G4F_USER_ID: "1200"
+      ANTIGRAVITY_CREDENTIALS_DIR: /app/har_and_cookies
+      ANTIGRAVITY_CONTROL_ORIGIN: https://gpt4free.lazycat1012.heiyu.space
       SE_VNC_PASSWORD: '{{ stable_secret "gpt4free_vnc_password" }}'
       G4F_LOGIN_URL: 'https://gpt4free.lazycat1012.heiyu.space/browser/?autoconnect=1&resize=scale&path=browser/websockify&password={{ stable_secret "gpt4free_vnc_password" }}'

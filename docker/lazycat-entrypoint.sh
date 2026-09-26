@@ -10,4 +10,5 @@ for path in \
   mkdir -p "$path"
   chown -R 1200:1201 "$path"
 done
+chmod 0700 /app/har_and_cookies
 exec su -s /bin/bash -c /opt/bin/entry_point.sh seluser

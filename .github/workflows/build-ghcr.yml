@@ -13,7 +13,7 @@ env:
   UPSTREAM_REPO: xtekky/gpt4free
   UPSTREAM_SHA: c0402eb5e3eb10529edff84f2ea7ded55643cacf
   IMAGE: ghcr.io/amoretzttiz/gpt4free
-  TAG: 20260926-c0402eb
+  TAG: 20260926-c0402eb-oauth1
 
 jobs:
   build:
