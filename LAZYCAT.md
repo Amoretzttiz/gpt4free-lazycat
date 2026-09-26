@@ -4,7 +4,7 @@ This package builds the original `xtekky/gpt4free` source at commit
 `c0402eb5e3eb10529edff84f2ea7ded55643cacf` with the upstream full browser image
 (`docker/Dockerfile`, Selenium Chrome + VNC) and publishes it as:
 
-`registry.lazycat.cloud/community/gpt4free:20260926-c0402eb`
+`ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb`
 
 ## Build
 
@@ -13,11 +13,11 @@ From the repository root:
 ```sh
 docker build --file docker/Dockerfile \
   --build-arg G4F_VERSION=c0402eb \
-  --tag registry.lazycat.cloud/community/gpt4free:20260926-c0402eb-base .
+  --tag ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb-base .
 
 docker build --file docker/Dockerfile-lazycat \
-  --build-arg BASE_IMAGE=registry.lazycat.cloud/community/gpt4free:20260926-c0402eb-base \
-  --tag registry.lazycat.cloud/community/gpt4free:20260926-c0402eb .
+  --build-arg BASE_IMAGE=ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb-base \
+  --tag ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb .
 ```
 
 The package manifest references the final wrapper image. If the destination
@@ -28,7 +28,7 @@ one is a standalone embedded-image installer:
 ```sh
 # On the image build host:
 docker save --output gpt4free-20260926-c0402eb.tar \
-  registry.lazycat.cloud/community/gpt4free:20260926-c0402eb
+  ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb
 
 # Copy both artifacts to the deployment environment. On the Docker runtime
 # that will run the service, import the image first:
@@ -65,7 +65,7 @@ by this build.
 reference above. This is the wrapper/fallback LPK form (`images: none`); it
 does not embed the multi-gigabyte Selenium/Chrome image. The target LazyCat
 registry must therefore be able to pull
-`registry.lazycat.cloud/community/gpt4free:20260926-c0402eb`.
+`ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb`.
 
 ```sh
 lzc-cli project lint .

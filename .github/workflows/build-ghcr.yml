@@ -1,0 +1,69 @@
+name: Build and publish gpt4free
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  UPSTREAM_REPO: xtekky/gpt4free
+  UPSTREAM_SHA: c0402eb5e3eb10529edff84f2ea7ded55643cacf
+  IMAGE: ghcr.io/amoretzttiz/gpt4free
+  TAG: 20260926-c0402eb
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout packaging
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned upstream
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          ref: ${{ env.UPSTREAM_SHA }}
+          path: upstream
+          fetch-depth: 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build upstream browser image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./upstream
+          file: ./upstream/docker/Dockerfile
+          build-args: G4F_VERSION=c0402eb
+          load: true
+          tags: gpt4free-base:${{ env.TAG }}
+          cache-from: type=gha,scope=gpt4free-base
+          cache-to: type=gha,mode=max,scope=gpt4free-base
+
+      - name: Build and publish LazyCat wrapper image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile-lazycat
+          build-args: BASE_IMAGE=gpt4free-base:${{ env.TAG }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.TAG }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha,scope=gpt4free-wrapper
+          cache-to: type=gha,mode=max,scope=gpt4free-wrapper
+
+      - name: Verify image metadata
+        run: |
+          docker buildx imagetools inspect "${IMAGE}:${TAG}"
