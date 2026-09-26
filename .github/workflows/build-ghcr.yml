@@ -51,16 +51,16 @@ jobs:
           cache-from: type=gha,scope=gpt4free-base
           cache-to: type=gha,mode=max,scope=gpt4free-base
 
+      # Buildx container driver cannot access the preceding load:true image.
+      # Build the wrapper with the runner daemon, then push its immutable tag.
       - name: Build and publish LazyCat wrapper image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./docker/Dockerfile-lazycat
-          build-args: BASE_IMAGE=gpt4free-base:${{ env.TAG }}
-          push: true
-          tags: ${{ env.IMAGE }}:${{ env.TAG }}
-          cache-from: type=gha,scope=gpt4free-wrapper
-          cache-to: type=gha,mode=max,scope=gpt4free-wrapper
+        run: |
+          docker build \
+            --file ./docker/Dockerfile-lazycat \
+            --build-arg BASE_IMAGE="gpt4free-base:${TAG}" \
+            --tag "${IMAGE}:${TAG}" \
+            .
+          docker push "${IMAGE}:${TAG}"
 
       - name: Verify image metadata
         run: |
