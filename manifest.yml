@@ -20,7 +20,7 @@ application:
       backend: http://gpt4free:8080/
 services:
   gpt4free:
-    image: ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb-oauth1
+    image: ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb-oauth2
     shm_size: 2gb
     binds:
       # HAR/cookie files used by upstream g4f providers.
