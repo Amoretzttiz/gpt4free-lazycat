@@ -9,6 +9,12 @@ permissions:
   contents: read
   packages: write
 
+# TAG is immutable. Serialize this workflow so two dispatches cannot race while
+# publishing the same image name.
+concurrency:
+  group: gpt4free-ghcr-${{ github.repository }}
+  cancel-in-progress: true
+
 env:
   UPSTREAM_REPO: xtekky/gpt4free
   UPSTREAM_SHA: c0402eb5e3eb10529edff84f2ea7ded55643cacf
@@ -52,17 +58,25 @@ jobs:
           cache-to: type=gha,mode=max,scope=gpt4free-base
 
       - name: Build and publish LazyCat wrapper image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./docker/Dockerfile-lazycat
-          build-args: BASE_IMAGE=gpt4free-base:${{ env.TAG }}
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ env.TAG }}
-            ${{ env.IMAGE }}:latest
-          cache-from: type=gha,scope=gpt4free-wrapper
-          cache-to: type=gha,mode=max,scope=gpt4free-wrapper
+        # The upstream build uses load:true, which loads gpt4free-base into the
+        # host Docker daemon. A docker-container Buildx builder cannot resolve
+        # that local-only base and would try Docker Hub instead, so build the
+        # thin wrapper with the host daemon and then push the immutable tag.
+        run: |
+          docker build \
+            --file ./docker/Dockerfile-lazycat \
+            --build-arg "BASE_IMAGE=gpt4free-base:${TAG}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.licenses=GPL-3.0-only" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${TAG}" \
+            --label "io.github.gpt4free.upstream.source=https://github.com/${UPSTREAM_REPO}" \
+            --label "io.github.gpt4free.upstream.revision=${UPSTREAM_SHA}" \
+            --tag "${IMAGE}:${TAG}" \
+            .
+          docker image inspect "${IMAGE}:${TAG}" \
+            --format "{{ json .Config.Labels }}"
+          docker push "${IMAGE}:${TAG}"
 
       - name: Verify image metadata
         run: |

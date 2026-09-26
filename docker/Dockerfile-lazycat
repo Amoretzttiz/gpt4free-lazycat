@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.lazycat.cloud/community/gpt4free:20260926-c0402eb-base
+ARG BASE_IMAGE=gpt4free-base:20260926-c0402eb
 FROM ${BASE_IMAGE}
 
 USER root

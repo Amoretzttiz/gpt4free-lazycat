@@ -1,5 +1,5 @@
 package: community.lazycat.app.gpt4free
-version: 1.0.1
+version: 1.0.2
 name: gpt4free
 description: Original xtekky/gpt4free web UI and browser-capable multi-provider gateway.
 author: xtekky

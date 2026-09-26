@@ -18,7 +18,7 @@ application:
       backend: http://gpt4free:8080/
 services:
   gpt4free:
-    image: registry.lazycat.cloud/community/gpt4free:20260926-c0402eb
+    image: ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb
     shm_size: 2gb
     binds:
       # HAR/cookie files used by upstream g4f providers.
@@ -33,4 +33,5 @@ services:
       G4F_USER: seluser
       G4F_USER_ID: "1200"
       SE_VNC_PASSWORD: '{{ stable_secret "gpt4free_vnc_password" }}'
-      G4F_LOGIN_URL: 'https://gpt4free.lazycat1012.heiyu.space/browser/?autoconnect=1&resize=scale&path=browser/websockify&password={{ stable_secret "gpt4free_vnc_password" }}'
+      # LAZYCAT_APP_DOMAIN is assigned by the target box at deployment time.
+      G4F_LOGIN_URL: 'https://${LAZYCAT_APP_DOMAIN}/browser/?autoconnect=1&resize=scale&path=browser/websockify&password={{ stable_secret "gpt4free_vnc_password" }}'

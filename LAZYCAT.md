@@ -6,45 +6,25 @@ This package builds the original `xtekky/gpt4free` source at commit
 
 `ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb`
 
-## Build
+## Image build
 
-From the repository root:
+The packaging repository intentionally does not vendor the upstream source.
+`.github/workflows/build-ghcr.yml` checks out the exact upstream commit above,
+builds its unmodified full-browser `docker/Dockerfile`, loads that base into the
+runner host Docker daemon, adds only the LazyCat entrypoint wrapper, and
+publishes the immutable GHCR tag. It does not publish `latest`.
 
-```sh
-docker build --file docker/Dockerfile \
-  --build-arg G4F_VERSION=c0402eb \
-  --tag ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb-base .
-
-docker build --file docker/Dockerfile-lazycat \
-  --build-arg BASE_IMAGE=ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb-base \
-  --tag ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb .
-```
-
-The package manifest references the final wrapper image. If the destination
-Docker runtime cannot pull it, transfer and pre-import that image before
-installing the wrapper LPK. The image tar and wrapper LPK are separate; neither
-one is a standalone embedded-image installer:
-
-```sh
-# On the image build host:
-docker save --output gpt4free-20260926-c0402eb.tar \
-  ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb
-
-# Copy both artifacts to the deployment environment. On the Docker runtime
-# that will run the service, import the image first:
-docker load --input gpt4free-20260926-c0402eb.tar
-
-# Build/install the small wrapper LPK through the normal LazyCat workflow:
-lzc-cli project release . --output ./dist/gpt4free-1.0.1.lpk
-lzc-cli lpk install ./dist/gpt4free-1.0.1.lpk
-```
+The final image carries OCI source, license, and revision labels, plus the exact
+upstream source revision. The wrapper workflow uses only the repository-scoped
+`GITHUB_TOKEN`; the manifest VNC password is generated on the target by
+`stable_secret` and is not stored in this repository.
 
 ## Runtime and auth
 
 `package.yml` sets `admin_only: true`. `manifest.yml` intentionally has no
 `public_path`, so the LazyCat platform gate applies to `/`, `/browser/`, `/v1`,
 `/docs`, media, and every other upstream route. `/browser/` forwards to the
-image's noVNC service and keeps its built-in VNC authentication; the configured
+image noVNC service and keeps its built-in VNC authentication; the configured
 noVNC websocket path is `/browser/websockify`. There is no public API bypass.
 Users must authenticate through the LazyCat platform; API clients must send
 requests through the authenticated platform URL.
@@ -61,17 +41,25 @@ by this build.
 
 ## LPK
 
-`lzc-build.yml` produces `dist/gpt4free-1.0.1.lpk` with the fixed OCI image
+`lzc-build.yml` produces `dist/gpt4free-1.0.2.lpk` with the fixed OCI image
 reference above. This is the wrapper/fallback LPK form (`images: none`); it
 does not embed the multi-gigabyte Selenium/Chrome image. The target LazyCat
-registry must therefore be able to pull
+runtime must therefore be able to pull
 `ghcr.io/amoretzttiz/gpt4free:20260926-c0402eb`.
 
 ```sh
 lzc-cli project lint .
-lzc-cli project release . --output ./dist/gpt4free-1.0.1.lpk
-lzc-cli lpk info ./dist/gpt4free-1.0.1.lpk
-lzc-cli lpk lint ./dist/gpt4free-1.0.1.lpk
+lzc-cli project release . --output ./dist/gpt4free-1.0.2.lpk
+lzc-cli lpk info ./dist/gpt4free-1.0.2.lpk
+lzc-cli lpk lint ./dist/gpt4free-1.0.2.lpk
 # Optional after an OCI-backed release:
-lzc-cli lpk embed ./dist/gpt4free-1.0.1.lpk
+lzc-cli lpk embed ./dist/gpt4free-1.0.2.lpk
 ```
+
+## License and source
+
+The runtime is built from [`xtekky/gpt4free`](https://github.com/xtekky/gpt4free)
+at `c0402eb5e3eb10529edff84f2ea7ded55643cacf` and is distributed under GNU GPL
+v3. See `LICENSE` and `NOTICE.md`. Corresponding source is available at the
+pinned upstream commit; the public wrapper and build recipe are in this
+repository.
