@@ -77,7 +77,7 @@ def clear_credentials():
 class FlowState:
     """Coordinate one flow without retaining returned tokens."""
     def __init__(self):
-        self.lock, self.phase, self.worker = threading.Lock(), credentials_state(), None
+        self.lock, self.phase, self.worker, self.auth_url = threading.Lock(), credentials_state(), None, None
     def status(self):
         with self.lock:
             phase, running = self.phase, bool(self.worker and self.worker.is_alive())
@@ -85,15 +85,15 @@ class FlowState:
             disk_state = credentials_state()
             if disk_state in ("authorized", "unsafe_credentials"): phase = disk_state
             elif phase == "authorized": phase = "not_authorized"
-        return {"authorized": phase == "authorized", "state": phase}
+        return {"authorized": phase == "authorized", "state": phase, **({"authorization_url": self.auth_url} if phase == "waiting_for_google" and self.auth_url else {})}
     def start(self):
         with self.lock:
             if (self.worker and self.worker.is_alive()) or credentials_state() == "authorized": return False
-            self.phase = "starting"; self.worker = threading.Thread(target=self._run, daemon=True); self.worker.start(); return True
+            self.phase = "starting"; self.auth_url = None; self.worker = threading.Thread(target=self._run, daemon=True); self.worker.start(); return True
     def clear(self):
         with self.lock:
             if self.worker and self.worker.is_alive(): return False
-            clear_credentials(); self.phase = "not_authorized"; return True
+            clear_credentials(); self.phase = "not_authorized"; self.auth_url = None; return True
     def _set_phase(self, value):
         with self.lock: self.phase = value
     def _run(self):
@@ -101,11 +101,12 @@ class FlowState:
         try:
             from g4f.Provider.needs_auth.Antigravity import AntigravityAuthManager
             auth_url, _verifier, expected_state = AntigravityAuthManager.build_authorization_url()
+            with self.lock: self.auth_url = auth_url
             callback_values = queue.Queue(maxsize=1)
             callback_server = HTTPServer((CALLBACK_HOST, CALLBACK_PORT), make_callback_handler(expected_state, callback_values), bind_and_activate=False)
             callback_server.allow_reuse_address = False; callback_server.server_bind(); callback_server.server_activate(); callback_server.timeout = 0.5
             self._set_phase("waiting_for_google")
-            if not webbrowser.open(auth_url, new=2, autoraise=True): raise RuntimeError("browser launch failed")
+            webbrowser.open(auth_url, new=2, autoraise=True)
             deadline = time.monotonic() + FLOW_TIMEOUT_SECONDS
             while callback_values.empty() and time.monotonic() < deadline: callback_server.handle_request()
             if callback_values.empty(): raise RuntimeError("callback timed out")
@@ -113,8 +114,11 @@ class FlowState:
             if result is None: raise RuntimeError("authorization denied")
             code, callback_state = result; self._set_phase("saving")
             tokens = asyncio.run(AntigravityAuthManager.exchange_code_for_tokens(code, callback_state))
-            write_credentials(tokens, AntigravityAuthManager); self._set_phase("authorized")
+            write_credentials(tokens, AntigravityAuthManager)
+            with self.lock: self.auth_url = None
+            self._set_phase("authorized")
         except Exception:
+            with self.lock: self.auth_url = None
             self._set_phase("failed")  # Never log exception text; it may contain secrets.
         finally:
             if tokens is not None: tokens.clear()
@@ -152,10 +156,11 @@ def control_page(status):
     labels = {"authorized":"Authorized", "not_authorized":"Not authorized", "unsafe_credentials":"Credential file rejected (owner or mode is unsafe)",
               "starting":"Starting local browser flow", "waiting_for_google":"Waiting for Google in the noVNC browser", "saving":"Saving credentials", "failed":"Authorization failed or timed out"}
     label = labels.get(str(status["state"]), "Unavailable")
+    auth_link = (f' <p><a href="{html.escape(status["authorization_url"], quote=True)}" target="_blank" rel="noreferrer">Open Google authorization</a> in the noVNC browser.</p>' if status.get("authorization_url") else "")
     disabled_start = " disabled" if status["authorized"] else ""
     disabled_clear = " disabled" if status["state"] == "not_authorized" else ""
     return f'''<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Antigravity OAuth</title>
-<h1>Google Antigravity OAuth</h1><p>Status: <strong>{html.escape(label)}</strong></p><p>Start opens Google in the container browser. Complete authorization through noVNC.</p>
+<h1>Google Antigravity OAuth</h1><p>Status: <strong>{html.escape(label)}</strong></p><p>Start authorization, then open the shown Google link in the application browser (noVNC).</p>{auth_link}
 <form method="post" action="start"><input type="hidden" name="csrf" value="{CSRF_TOKEN}"><button{disabled_start}>Start authorization</button></form>
 <form method="post" action="clear"><input type="hidden" name="csrf" value="{CSRF_TOKEN}"><button{disabled_clear}>Clear local authorization</button></form>
 <p>Clearing removes only the local credential file; it does not revoke Google access.</p>'''.encode()
